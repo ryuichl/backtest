@@ -22,8 +22,8 @@ warnings.filterwarnings("ignore")
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 # ── 下載資料 ──────────────────────────────────────────────
-print("正在下載 QQQ、TQQQ、SPMO 歷史資料...")
-tickers = {"QQQ": "QQQ", "TQQQ": "TQQQ", "SPMO": "SPMO"}
+print("正在下載 QQQ、TQQQ、QLD、SPMO 歷史資料...")
+tickers = {"QQQ": "QQQ", "TQQQ": "TQQQ", "QLD": "QLD", "SPMO": "SPMO"}
 raw = {}
 for name, ticker in tickers.items():
     data = yf.download(ticker, start="2010-02-11", end=datetime.today().strftime("%Y-%m-%d"), progress=False)
@@ -34,6 +34,7 @@ for name, ticker in tickers.items():
 df = pd.DataFrame({
     "QQQ_Close": raw["QQQ"],
     "TQQQ_Close": raw["TQQQ"],
+    "QLD_Close": raw["QLD"],
     "SPMO_Close": raw["SPMO"],
 })
 df.dropna(inplace=True)
@@ -69,6 +70,7 @@ df["below_ma756"] = (df["QQQ_Close"] <= df["QQQ_MA756"]).astype(int)
 # 每日報酬率
 df["TQQQ_Return"] = df["TQQQ_Close"].pct_change()
 df["QQQ_Return"] = df["QQQ_Close"].pct_change()
+df["QLD_Return"] = df["QLD_Close"].pct_change()
 df["SPMO_Return"] = df["SPMO_Close"].pct_change()
 df.dropna(inplace=True)
 
@@ -272,6 +274,11 @@ for period_name, df_period in periods.items():
     bh_qqq_metrics = calc_metrics(bh_qqq_curve, date_list)
     bh_qqq_metrics["交易次數"] = 0
 
+    # Buy & Hold QLD（2x 槓桿 ETF）
+    bh_qld_capital, bh_qld_curve = run_buy_and_hold(df_period, "QLD_Return")
+    bh_qld_metrics = calc_metrics(bh_qld_curve, date_list)
+    bh_qld_metrics["交易次數"] = 0
+
     # 3天→QQQ 輪換策略
     d3q_capital, d3q_curve, d3q_trades = run_backtest_switch(df_period, "QQQ_Return")
     d3q_metrics = calc_metrics(d3q_curve, date_list)
@@ -294,6 +301,7 @@ for period_name, df_period in periods.items():
 
     results_dict = {
         "B&H QQQ": bh_qqq_metrics,
+        "B&H QLD": bh_qld_metrics,
         "B&H TQQQ": bh_metrics,
         "3天→QQQ": d3q_metrics,
         "3天→SPMO": d3s_metrics,
@@ -301,6 +309,7 @@ for period_name, df_period in periods.items():
     curves_dict = {
         "dates": date_list,
         "B&H QQQ": bh_qqq_curve,
+        "B&H QLD": bh_qld_curve,
         "B&H TQQQ": bh_curve,
         "3天→QQQ": d3q_curve,
         "3天→SPMO": d3s_curve,
