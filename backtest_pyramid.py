@@ -204,12 +204,12 @@ def run_backtest_switch(df_period, alt_return_col, confirm_days=3):
     return capital, equity_curve, trades
 
 
-def run_buy_and_hold(df_period):
-    """單純持有 TQQQ"""
+def run_buy_and_hold(df_period, return_col="TQQQ_Return"):
+    """單純持有指定標的"""
     capital = 10000.0
     equity_curve = []
     for i in range(len(df_period)):
-        daily_return = df_period.iloc[i]["TQQQ_Return"]
+        daily_return = df_period.iloc[i][return_col]
         capital *= (1 + daily_return)
         equity_curve.append(capital)
     return capital, equity_curve
@@ -262,10 +262,15 @@ for period_name, df_period in periods.items():
     else:
         date_list = df_period.index.tolist()
 
-    # Buy & Hold
-    bh_capital, bh_curve = run_buy_and_hold(df_period)
+    # Buy & Hold TQQQ
+    bh_capital, bh_curve = run_buy_and_hold(df_period, "TQQQ_Return")
     bh_metrics = calc_metrics(bh_curve, date_list)
     bh_metrics["交易次數"] = 0
+
+    # Buy & Hold QQQ（原型 ETF 基準）
+    bh_qqq_capital, bh_qqq_curve = run_buy_and_hold(df_period, "QQQ_Return")
+    bh_qqq_metrics = calc_metrics(bh_qqq_curve, date_list)
+    bh_qqq_metrics["交易次數"] = 0
 
     # 3天→QQQ 輪換策略
     d3q_capital, d3q_curve, d3q_trades = run_backtest_switch(df_period, "QQQ_Return")
@@ -288,13 +293,15 @@ for period_name, df_period in periods.items():
     }
 
     results_dict = {
-        "Buy & Hold": bh_metrics,
+        "B&H QQQ": bh_qqq_metrics,
+        "B&H TQQQ": bh_metrics,
         "3天→QQQ": d3q_metrics,
         "3天→SPMO": d3s_metrics,
     }
     curves_dict = {
         "dates": date_list,
-        "Buy & Hold": bh_curve,
+        "B&H QQQ": bh_qqq_curve,
+        "B&H TQQQ": bh_curve,
         "3天→QQQ": d3q_curve,
         "3天→SPMO": d3s_curve,
     }
